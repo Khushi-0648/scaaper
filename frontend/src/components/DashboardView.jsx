@@ -91,11 +91,6 @@ export default function DashboardView({ onNavigate, onSelectAnalysis, onSelectBu
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none animate-float" />
 
         <div className="relative z-10 max-w-2xl space-y-2.5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-bold shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse-subtle" />
-            <span>AI-Powered Digital Growth Platform</span>
-          </div>
-
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
             Discover Businesses &amp; Audit Websites
           </h1>
