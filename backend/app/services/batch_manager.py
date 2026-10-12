@@ -40,7 +40,7 @@ class BatchAnalysisManager:
                 "valid": is_valid,
                 "status": "queued",
                 "analysis_id": None,
-                "error": None if is_valid else "Invalid URL format"
+                "error": None if is_valid else (norm_url if (not is_valid and isinstance(norm_url, str)) else "Invalid URL or unreachable domain")
             })
 
         record = create_batch_job(batch_id, title, batch_items, search_id)

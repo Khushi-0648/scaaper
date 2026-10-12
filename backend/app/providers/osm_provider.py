@@ -113,9 +113,9 @@ class OSMOverpassProvider(BusinessSearchProvider):
             if website and not (website.startswith("http://") or website.startswith("https://")):
                 website = f"https://{website}"
 
-            if not website and idx % 4 != 0:
-                slug = re.sub(r'[^a-zA-Z0-9]', '', name.lower())[:18]
-                website = f"https://www.{slug}.com"
+            # Keep website authentic; do not generate synthetic non-existent domains
+            if not website:
+                website = None
 
             email = extratags.get("email") or extratags.get("contact:email")
             if not email and website:

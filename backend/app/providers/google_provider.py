@@ -232,10 +232,9 @@ class GooglePlacesProvider(BusinessSearchProvider):
             if website and not (website.startswith("http://") or website.startswith("https://")):
                 website = f"https://{website}"
 
-            # Simulate realistic agency opportunity: ~25% of local businesses don't have a website
-            if not website and idx % 4 != 0:
-                slug = re.sub(r'[^a-zA-Z0-9]', '', name.lower())[:18]
-                website = f"https://www.{slug}.com"
+            # Keep website authentic; do not generate synthetic non-existent domains
+            if not website:
+                website = None
 
             # Email / Gmail
             email = extratags.get("email") or extratags.get("contact:email")

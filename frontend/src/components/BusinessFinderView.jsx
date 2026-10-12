@@ -562,6 +562,10 @@ export default function BusinessFinderView({ onAnalyzeWebsite, onStartBatch, ini
                         website: b.website,
                         business_name: b.name
                       }));
+                    if (items.length === 0) {
+                      setErrorMessage('The selected businesses do not have websites to audit. Use "Details" to view pitch opportunities.');
+                      return;
+                    }
                     onStartBatch(items, `Selected (${items.length}): ${searchData.keyword}`);
                   }}
                   className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs btn-motion transition text-center active:scale-95"

@@ -133,13 +133,12 @@ def init_db():
             except Exception:
                 pass
 
-    cursor.execute("PRAGMA table_info(businesses)")
-    existing_biz_cols = {col["name"] for col in cursor.fetchall()}
-    if "email" not in existing_biz_cols:
-        try:
-            cursor.execute("ALTER TABLE businesses ADD COLUMN email TEXT")
-        except Exception:
-            pass
+    # Reset any tasks that were running during a previous crash/restart
+    try:
+        cursor.execute("UPDATE analyses SET status = 'failed', error_message = 'Task interrupted by server reload' WHERE status IN ('running', 'pending')")
+        cursor.execute("UPDATE batch_jobs SET status = 'partial', running_items = 0 WHERE status = 'running'")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
