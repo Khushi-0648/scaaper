@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Server, Key, Shield, HardDrive } from 'lucide-react';
+import { Settings, Server, Key, Shield, HardDrive, MapPin, Sliders, CheckCircle2 } from 'lucide-react';
 
 export default function SettingsView() {
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [provider, setProvider] = useState('osm_overpass');
+  const [aiProvider, setAiProvider] = useState('gemini');
 
   useEffect(() => {
     fetch('/health')
@@ -12,25 +14,24 @@ export default function SettingsView() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6 animate-in fade-in duration-300">
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-          <Settings className="w-6 h-6 text-yellow-600" />
-          <span>System & Engine Settings</span>
+        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          Settings
         </h2>
-        <p className="text-sm text-slate-600 mt-1">
-          Configuration settings for crawling engine, database storage, and AI inference.
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Configure API connectors, crawler rate limits, and audit defaults.
         </p>
       </div>
 
       <div className="space-y-4">
-        {/* Connection Status */}
-        <div className="p-6 rounded-3xl bg-white border border-yellow-200 shadow-sm flex items-center justify-between">
+        {/* Backend Connection */}
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Server className="w-5 h-5 text-yellow-600" />
+            <Server className="w-5 h-5 text-blue-600" />
             <div>
-              <h4 className="text-sm font-bold text-slate-900">FastAPI Backend API</h4>
-              <p className="text-xs text-slate-500 font-mono">http://localhost:8000</p>
+              <h4 className="text-sm font-extrabold text-slate-900">FastAPI Intelligence Server</h4>
+              <p className="text-xs text-slate-500 font-mono">http://127.0.0.1:8000</p>
             </div>
           </div>
           <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase flex items-center gap-1.5 ${
@@ -43,47 +44,109 @@ export default function SettingsView() {
           </span>
         </div>
 
-        {/* Database */}
-        <div className="p-6 rounded-3xl bg-white border border-yellow-200 shadow-sm space-y-2">
+        {/* Business Search Provider Abstraction */}
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center gap-3">
-            <HardDrive className="w-5 h-5 text-yellow-600" />
+            <MapPin className="w-5 h-5 text-blue-600" />
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Database Engine</h4>
-              <p className="text-xs text-slate-500">SQLite (Zero-configuration persistent local storage)</p>
+              <h4 className="text-sm font-extrabold text-slate-900">Business Search Provider Abstraction</h4>
+              <p className="text-xs text-slate-500">Configure data source for Location + Keyword discovery</p>
             </div>
           </div>
-          <div className="bg-yellow-50/60 p-3 rounded-xl border border-yellow-200 text-xs font-mono text-slate-800 font-semibold">
-            backend/data/analyzer.db
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <label className={`p-4 rounded-2xl border-2 cursor-pointer flex items-start gap-3 transition ${
+              provider === 'google_places' ? 'border-blue-500 bg-slate-50/50' : 'border-slate-200 bg-white'
+            }`}>
+              <input
+                type="radio"
+                name="biz_provider"
+                checked={provider === 'google_places'}
+                onChange={() => setProvider('google_places')}
+                className="mt-1 accent-slate-950"
+              />
+              <div>
+                <div className="text-xs font-black text-slate-950">Google Places API</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Live Google Maps & Places data for locations, phone, reviews, ratings, and operating hours.
+                </div>
+              </div>
+            </label>
+
+            <label className={`p-4 rounded-2xl border-2 cursor-pointer flex items-start gap-3 transition ${
+              provider === 'osm_overpass' ? 'border-blue-500 bg-slate-50/50' : 'border-slate-200 bg-white'
+            }`}>
+              <input
+                type="radio"
+                name="biz_provider"
+                checked={provider === 'osm_overpass'}
+                onChange={() => setProvider('osm_overpass')}
+                className="mt-1 accent-slate-950"
+              />
+              <div>
+                <div className="text-xs font-black text-slate-950">OpenStreetMap (Free / Open)</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  100% terms-compliant open POI directory with Nominatim geocoding & Overpass queries.
+                </div>
+              </div>
+            </label>
+
+            <label className={`p-4 rounded-2xl border-2 cursor-pointer flex items-start gap-3 transition ${
+              provider === 'directory' ? 'border-blue-500 bg-slate-50/50' : 'border-slate-200 bg-white'
+            }`}>
+              <input
+                type="radio"
+                name="biz_provider"
+                checked={provider === 'directory'}
+                onChange={() => setProvider('directory')}
+                className="mt-1 accent-slate-950"
+              />
+              <div>
+                <div className="text-xs font-black text-slate-950">Local Directory Fallback</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Offline-resilient verified regional datasets for high-speed local development and zero rate-limits.
+                </div>
+              </div>
+            </label>
           </div>
         </div>
 
-        {/* AI Provider */}
-        <div className="p-6 rounded-3xl bg-white border border-yellow-200 shadow-sm space-y-3">
+        {/* AI Engine & API Keys */}
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center gap-3">
-            <Key className="w-5 h-5 text-yellow-600" />
+            <Key className="w-5 h-5 text-blue-600" />
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Configured AI Engine</h4>
-              <p className="text-xs text-slate-500">Powered by Google Gemini with deterministic offline fallback</p>
+              <h4 className="text-sm font-extrabold text-slate-900">AI Intelligence Provider</h4>
+              <p className="text-xs text-slate-500">Multimodal synthesis across 10 specialized intelligence agents</p>
             </div>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed font-medium">
-            To activate real-time Gemini LLM calls, define <code>GEMINI_API_KEY=your_key_here</code> in <code>backend/.env</code>.
-            If no key is supplied, the built-in deterministic evidence synthesis engine operates seamlessly with zero dependencies or API costs.
+            Configure <code>GEMINI_API_KEY=your_key_here</code> in <code>backend/.env</code> to route synthesis to Google Gemini. If omitted, WebIntel AI utilizes its built-in deterministic rule-grounded inference engine with zero cost and 100% uptime.
           </p>
         </div>
 
-        {/* User Agent */}
-        <div className="p-6 rounded-3xl bg-white border border-yellow-200 shadow-sm space-y-2">
+        {/* Data Ethics & Protection */}
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-yellow-600" />
+            <Shield className="w-5 h-5 text-blue-600" />
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Bot Identification Header</h4>
-              <p className="text-xs text-slate-500">Sent during HTTP crawling to declare bot identity ethically</p>
+              <h4 className="text-sm font-extrabold text-slate-900">Data Ethics & Security Guardrails</h4>
+              <p className="text-xs text-slate-500">Compliance with scraping regulations and website terms of service</p>
             </div>
           </div>
-          <div className="bg-yellow-50/60 p-3 rounded-xl border border-yellow-200 text-xs font-mono text-slate-800 font-semibold">
-            WebsiteAnalyzerBot/1.0 (+https://websiteanalyzer.local; contact@websiteanalyzer.local)
-          </div>
+          <ul className="text-xs text-slate-700 space-y-2 font-medium">
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Only publicly accessible information is parsed (no CAPTCHA bypass, no paywall evasion, no authenticated scraping).</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Full SSRF protection: Localhost and internal private IP address ranges are strictly blocked.</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Conforms to robots.txt directives and gentle request rate throttling (default 0.2s–0.3s delay).</span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
         </p>
 
         {advantages.length === 0 ? (
-          <p className="text-sm text-slate-500 p-4 bg-white rounded-2xl border border-yellow-200">No positive signals detected.</p>
+          <p className="text-sm text-slate-500 p-4 bg-white rounded-2xl border border-slate-200">No positive signals detected.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {advantages.map((adv, idx) => (
@@ -58,7 +58,7 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
       </div>
 
       {/* 2. Potential Drawbacks & Issues */}
-      <div className="space-y-4 pt-4 border-t border-yellow-200">
+      <div className="space-y-4 pt-4 border-t border-slate-200">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-rose-500 ring-4 ring-rose-100" />
           <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-wider">
@@ -70,7 +70,7 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
         </p>
 
         {drawbacks.length === 0 ? (
-          <p className="text-sm text-slate-500 p-4 bg-white rounded-2xl border border-yellow-200">No defects or bottlenecks detected.</p>
+          <p className="text-sm text-slate-500 p-4 bg-white rounded-2xl border border-slate-200">No defects or bottlenecks detected.</p>
         ) : (
           <div className="space-y-3">
             {drawbacks.map((drw, idx) => {
@@ -78,13 +78,13 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
               return (
                 <div 
                   key={idx}
-                  className="p-5 rounded-2xl bg-white border border-yellow-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
+                  className="p-5 rounded-2xl bg-white border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
                 >
                   <div className="flex items-start gap-3">
                     {isConfirmed ? (
                       <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     ) : (
-                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                     )}
 
                     <div>
@@ -93,7 +93,7 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                           isConfirmed 
                             ? 'bg-rose-100 text-rose-800 border-rose-300' 
-                            : 'bg-amber-100 text-amber-800 border-amber-300'
+                            : 'bg-blue-100 text-blue-800 border-blue-200'
                         }`}>
                           {drw.classification}
                         </span>
@@ -102,13 +102,13 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-800 font-mono bg-yellow-50/60 px-3 py-2 rounded-xl border border-yellow-200 mb-1.5 font-medium">
-                        <span className="text-yellow-900 block text-[10px] uppercase font-bold">Evidence:</span>
+                      <p className="text-xs text-slate-800 font-mono bg-slate-50/60 px-3 py-2 rounded-xl border border-slate-200 mb-1.5 font-medium">
+                        <span className="text-slate-900 block text-[10px] uppercase font-bold">Evidence:</span>
                         {drw.evidence}
                       </p>
 
                       {drw.recommendation && (
-                        <p className="text-xs text-yellow-950 font-medium">
+                        <p className="text-xs text-slate-900 font-medium">
                           Recommendation: {drw.recommendation}
                         </p>
                       )}
@@ -122,9 +122,9 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
       </div>
 
       {/* 3. Potentially Missing Features Checklist */}
-      <div className="space-y-4 pt-4 border-t border-yellow-200">
+      <div className="space-y-4 pt-4 border-t border-slate-200">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-yellow-500 ring-4 ring-yellow-200" />
+          <div className="w-3 h-3 rounded-full bg-slate-500 ring-4 ring-blue-500" />
           <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-wider">
             Potentially Missing Features Checklist
           </h3>
@@ -141,7 +141,7 @@ export default function AdvantagesDrawbacksTab({ data = {} }) {
                 key={idx}
                 className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
                   isDetected 
-                    ? 'bg-white border-yellow-300 shadow-xs' 
+                    ? 'bg-white border-blue-200 shadow-xs' 
                     : 'bg-white/60 border-slate-200'
                 }`}
               >

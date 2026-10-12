@@ -11,14 +11,30 @@ from typing import Optional, List, Dict, Any
 
 from app.crawler.validator import validate_and_normalize_url
 from app.crawler.pipeline import execute_analysis_job, REPORTS_DIR
+from app.providers.manager import search_manager, normalize_business_query
+from app.services.batch_manager import batch_manager
+from app.analyzers.competitor import compare_competitors
+from app.exporters.excel_exporter import generate_business_excel_report
+from app.exporters.pdf_exporter import generate_business_pdf_report
 from app.database.db import (
     create_analysis,
     get_analysis,
     get_all_analyses,
-    delete_analysis
+    delete_analysis,
+    save_business_search,
+    get_business_search,
+    get_all_business_searches,
+    delete_business_search,
+    clear_all_business_searches,
+    get_all_businesses,
+    get_batch_job,
+    get_all_batch_jobs,
+    get_dashboard_stats
 )
 
 router = APIRouter(prefix="/api")
+
+# ================= DATA MODELS =================
 
 class AnalyzeRequest(BaseModel):
     url: str
@@ -31,6 +47,31 @@ class AnalyzeRequest(BaseModel):
 class ValidateUrlRequest(BaseModel):
     url: str
 
+class BusinessSearchRequest(BaseModel):
+    query: Optional[str] = None
+    location: Optional[str] = None
+    keyword: Optional[str] = None
+    radius_km: Optional[int] = 10
+    limit: Optional[int] = 50
+    provider: Optional[str] = None
+    refresh: Optional[bool] = False
+    offset: Optional[int] = 0
+    exclude_names: Optional[List[str]] = []
+
+class BatchAnalyzeRequest(BaseModel):
+    title: Optional[str] = "Batch Website Analysis"
+    search_id: Optional[str] = None
+    items: List[Dict[str, Any]] # [{"business_id": "...", "website": "...", "business_name": "..."}]
+
+class CompetitorCompareRequest(BaseModel):
+    analysis_ids: List[str]
+
+# ================= DASHBOARD & VALIDATION =================
+
+@router.get("/dashboard/stats")
+def get_stats():
+    return get_dashboard_stats()
+
 @router.post("/validate-url")
 def validate_url_endpoint(req: ValidateUrlRequest):
     is_valid, norm_url_or_err, domain = validate_and_normalize_url(req.url)
@@ -38,8 +79,11 @@ def validate_url_endpoint(req: ValidateUrlRequest):
         return {"valid": False, "error": norm_url_or_err}
     return {"valid": True, "normalized_url": norm_url_or_err, "domain": domain}
 
+# ================= MODULE 1: WEBSITE ANALYZER =================
+
 @router.post("/analyze")
-def start_analysis(req: AnalyzeRequest, background_tasks: BackgroundTasks):
+@router.post("/websites/analyze")
+def start_analysis(req: AnalyzeRequest):
     is_valid, norm_url_or_err, domain = validate_and_normalize_url(req.url)
     if not is_valid:
         raise HTTPException(status_code=400, detail=norm_url_or_err)
@@ -68,6 +112,7 @@ def start_analysis(req: AnalyzeRequest, background_tasks: BackgroundTasks):
     }
 
 @router.get("/analyze/{analysis_id}/status")
+@router.get("/websites/{analysis_id}/status")
 def get_analysis_status(analysis_id: str):
     record = get_analysis(analysis_id)
     if not record:
@@ -85,6 +130,7 @@ def get_analysis_status(analysis_id: str):
     }
 
 @router.get("/analyze/{analysis_id}/results")
+@router.get("/websites/{analysis_id}")
 def get_analysis_results(analysis_id: str):
     record = get_analysis(analysis_id)
     if not record:
@@ -108,6 +154,7 @@ def get_analysis_results(analysis_id: str):
     return record["full_data"]
 
 @router.get("/analyze/{analysis_id}/excel")
+@router.get("/websites/{analysis_id}/excel")
 def download_excel(analysis_id: str):
     record = get_analysis(analysis_id)
     if not record:
@@ -117,14 +164,33 @@ def download_excel(analysis_id: str):
     if not os.path.exists(excel_path):
         raise HTTPException(status_code=404, detail="Excel report not generated or missing.")
 
-    filename = f"{record['domain']}_analysis.xlsx"
+    filename = f"{record['domain']}_webintel_report.xlsx"
     return FileResponse(
         path=excel_path,
         filename=filename,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+@router.get("/analyze/{analysis_id}/pdf")
+@router.get("/websites/{analysis_id}/pdf")
+def download_pdf(analysis_id: str):
+    record = get_analysis(analysis_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Analysis ID not found.")
+
+    pdf_path = os.path.join(REPORTS_DIR, f"{analysis_id}.pdf")
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="PDF report not generated or missing.")
+
+    filename = f"{record['domain']}_webintel_audit.pdf"
+    return FileResponse(
+        path=pdf_path,
+        filename=filename,
+        media_type="application/pdf"
+    )
+
 @router.get("/analyze/{analysis_id}/json")
+@router.get("/websites/{analysis_id}/json")
 def download_json(analysis_id: str):
     record = get_analysis(analysis_id)
     if not record or not record.get("full_data"):
@@ -139,6 +205,7 @@ def download_json(analysis_id: str):
     )
 
 @router.get("/analyze/{analysis_id}/csv")
+@router.get("/websites/{analysis_id}/csv")
 def download_csv(analysis_id: str):
     record = get_analysis(analysis_id)
     if not record or not record.get("full_data"):
@@ -154,6 +221,168 @@ def download_csv(analysis_id: str):
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
+# ================= MODULE 2: BUSINESS FINDER =================
+
+@router.post("/business/search")
+@router.post("/businesses/search")
+def search_businesses_endpoint(req: BusinessSearchRequest):
+    location, keyword, radius_km = normalize_business_query(
+        raw_query=req.query or "",
+        raw_location=req.location or "",
+        raw_keyword=req.keyword or "",
+        radius_km=req.radius_km or 10
+    )
+
+    try:
+        businesses = search_manager.search(
+            location=location,
+            keyword=keyword,
+            radius_km=radius_km,
+            limit=req.limit or 50,
+            provider_preference=req.provider,
+            refresh=req.refresh or False,
+            offset=req.offset or 0,
+            exclude_names=req.exclude_names or []
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    detected_provider = "google_places" if (req.provider == "google" or search_manager.google_provider.api_key) else "osm_global"
+    search_id = str(uuid.uuid4())
+    saved_record = save_business_search(
+        search_id=search_id,
+        query=f"{keyword} in {location}",
+        location=location,
+        keyword=keyword,
+        radius_km=radius_km,
+        businesses=[b.model_dump() for b in businesses],
+        provider=detected_provider
+    )
+
+    return saved_record
+
+@router.get("/business/search/{search_id}")
+def get_business_search_endpoint(search_id: str):
+    record = get_business_search(search_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Business search not found.")
+    return record
+
+@router.get("/business/searches")
+def get_all_business_searches_endpoint():
+    return get_all_business_searches()
+
+@router.delete("/business/search/{search_id}")
+def delete_business_search_endpoint(search_id: str):
+    success = delete_business_search(search_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Business search not found or already deleted.")
+    return {"status": "deleted", "id": search_id}
+
+@router.delete("/business/searches")
+def clear_all_business_searches_endpoint():
+    clear_all_business_searches()
+    return {"status": "all_cleared", "message": "All recent business searches cleared successfully"}
+
+@router.get("/business/search/{search_id}/excel")
+def download_business_excel(search_id: str):
+    record = get_business_search(search_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Business search not found.")
+
+    output_path = os.path.join(REPORTS_DIR, f"business_{search_id}.xlsx")
+    generate_business_excel_report(record, output_path)
+
+    filename = f"{record['location']}_{record['keyword']}_businesses.xlsx".replace(" ", "_")
+    return FileResponse(
+        path=output_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@router.get("/business/export/all/excel")
+def download_all_businesses_excel():
+    businesses = get_all_businesses()
+    if not businesses:
+        raise HTTPException(status_code=404, detail="No businesses found in directory.")
+
+    output_path = os.path.join(REPORTS_DIR, "all_businesses_directory.xlsx")
+    search_data = {
+        "query": "All Discovered Businesses",
+        "location": "Global Directory",
+        "keyword": "All Categories",
+        "businesses": businesses,
+        "provider": "Google Places / Global Directory"
+    }
+    generate_business_excel_report(search_data, output_path)
+    return FileResponse(
+        path=output_path,
+        filename="All_Discovered_Businesses.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@router.get("/business/search/{search_id}/pdf")
+def download_business_pdf(search_id: str):
+    record = get_business_search(search_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Business search not found.")
+
+    output_path = os.path.join(REPORTS_DIR, f"business_{search_id}.pdf")
+    generate_business_pdf_report(record, output_path)
+
+    filename = f"{record['location']}_{record['keyword']}_opportunities.pdf".replace(" ", "_")
+    return FileResponse(
+        path=output_path,
+        filename=filename,
+        media_type="application/pdf"
+    )
+
+# ================= BRIDGE: BATCH ANALYSIS =================
+
+@router.post("/business/batch-analyze")
+def start_batch_analysis_endpoint(req: BatchAnalyzeRequest):
+    if not req.items:
+        raise HTTPException(status_code=400, detail="No businesses or website URLs provided for batch analysis.")
+
+    job = batch_manager.start_batch_job(
+        title=req.title or "Batch Website Analysis",
+        items=req.items,
+        search_id=req.search_id
+    )
+    return job
+
+@router.get("/batch/{batch_id}")
+@router.get("/batch/{batch_id}/status")
+def get_batch_status_endpoint(batch_id: str):
+    record = get_batch_job(batch_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Batch job not found.")
+    return record
+
+@router.get("/batch-jobs")
+def get_all_batch_jobs_endpoint():
+    return get_all_batch_jobs()
+
+# ================= COMPETITOR COMPARISON =================
+
+@router.post("/competitor/compare")
+def compare_competitors_endpoint(req: CompetitorCompareRequest):
+    if len(req.analysis_ids) < 2:
+        raise HTTPException(status_code=400, detail="Provide at least 2 analysis IDs to perform competitor benchmarking.")
+
+    analyses = []
+    for aid in req.analysis_ids[:5]:
+        record = get_analysis(aid)
+        if record and record.get("full_data"):
+            analyses.append(record["full_data"])
+
+    if len(analyses) < 2:
+        raise HTTPException(status_code=400, detail="Could not load completed analyses for the selected IDs.")
+
+    return compare_competitors(analyses)
+
+# ================= HISTORY & SETTINGS =================
+
 @router.get("/history")
 def list_history():
     return get_all_analyses()
@@ -164,12 +393,42 @@ def remove_history(analysis_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Analysis record not found.")
 
-    # Remove excel if exists
-    excel_path = os.path.join(REPORTS_DIR, f"{analysis_id}.xlsx")
-    if os.path.exists(excel_path):
-        try:
-            os.remove(excel_path)
-        except Exception:
-            pass
+    # Remove excel / pdf if exists
+    for ext in [".xlsx", ".pdf"]:
+        p = os.path.join(REPORTS_DIR, f"{analysis_id}{ext}")
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
 
     return {"deleted": True, "id": analysis_id}
+
+@router.get("/reports")
+def list_reports():
+    analyses = get_all_analyses()
+    searches = get_all_business_searches()
+    
+    reports = []
+    for a in analyses:
+        if a.get("status") == "completed":
+            reports.append({
+                "id": a["id"],
+                "type": "website",
+                "title": f"Website Audit — {a['domain']}",
+                "date": a.get("completed_at") or a.get("created_at"),
+                "excel_url": f"/api/websites/{a['id']}/excel",
+                "pdf_url": f"/api/websites/{a['id']}/pdf",
+                "json_url": f"/api/websites/{a['id']}/json"
+            })
+    for s in searches:
+        reports.append({
+            "id": s["id"],
+            "type": "business",
+            "title": f"Business Intelligence — {s['keyword']} in {s['location']}",
+            "date": s.get("created_at"),
+            "excel_url": f"/api/business/search/{s['id']}/excel",
+            "pdf_url": f"/api/business/search/{s['id']}/pdf",
+            "json_url": None
+        })
+    return reports

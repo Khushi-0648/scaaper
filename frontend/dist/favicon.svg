@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#brandGrad)" />
+  <!-- Crisp Sparkle & Compass Core -->
+  <path d="M16 6L18.4 12.6L25 15L18.4 17.4L16 24L13.6 17.4L7 15L13.6 12.6L16 6Z" fill="#FFFFFF" />
+  <circle cx="23" cy="9" r="1.8" fill="#93C5FD" />
+</svg>

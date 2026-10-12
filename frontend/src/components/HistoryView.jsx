@@ -8,20 +8,20 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-            <History className="w-6 h-6 text-yellow-600" />
+            <History className="w-6 h-6 text-blue-600" />
             <span>Analysis History</span>
           </h2>
           <p className="text-sm text-slate-600 mt-1">
             Persisted crawl audits and generated reports stored in SQLite.
           </p>
         </div>
-        <span className="text-xs text-yellow-950 font-bold font-mono bg-yellow-100 px-3 py-1.5 rounded-xl border border-yellow-300">
+        <span className="text-xs text-slate-900 font-bold font-mono bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
           {history.length} records saved
         </span>
       </div>
 
       {history.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-white border border-yellow-200 text-center shadow-xs">
+        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center shadow-xs">
           <History className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-900 mb-1">No Past Analyses Recorded</h3>
           <p className="text-sm text-slate-500 max-w-sm mx-auto">
@@ -29,10 +29,10 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl border border-yellow-200 bg-white overflow-hidden shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-yellow-100/70 text-yellow-950 uppercase font-extrabold text-[10px] tracking-wider border-b border-yellow-200">
+            <table className="w-full text-left text-xs text-slate-700 min-w-[640px]">
+              <thead className="bg-slate-50 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
                 <tr>
                   <th className="py-3.5 px-4">Website URL</th>
                   <th className="py-3.5 px-3">Date</th>
@@ -44,11 +44,11 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-yellow-100">
+              <tbody className="divide-y divide-slate-100">
                 {history.map((item) => {
                   const isComplete = item.status === 'completed';
                   return (
-                    <tr key={item.id} className="hover:bg-yellow-50/40 transition">
+                    <tr key={item.id} className="hover:bg-slate-50/40 transition">
                       {/* URL */}
                       <td className="py-3.5 px-4 font-medium text-slate-900 max-w-xs truncate">
                         <div className="font-extrabold text-sm truncate">{item.domain}</div>
@@ -71,7 +71,7 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                       {/* SEO */}
                       <td className="py-3.5 px-3 font-mono">
                         {isComplete ? (
-                          <span className={`font-bold ${item.seo_score >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          <span className={`font-bold ${item.seo_score >= 80 ? 'text-emerald-700' : 'text-blue-700'}`}>
                             {item.seo_score}/100
                           </span>
                         ) : '-'}
@@ -80,7 +80,7 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                       {/* Perf */}
                       <td className="py-3.5 px-3 font-mono">
                         {isComplete ? (
-                          <span className={`font-bold ${item.performance_score >= 75 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          <span className={`font-bold ${item.performance_score >= 75 ? 'text-emerald-700' : 'text-blue-700'}`}>
                             {item.performance_score}/100
                           </span>
                         ) : '-'}
@@ -89,7 +89,7 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                       {/* A11y */}
                       <td className="py-3.5 px-3 font-mono">
                         {isComplete ? (
-                          <span className={`font-bold ${item.accessibility_score >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          <span className={`font-bold ${item.accessibility_score >= 80 ? 'text-emerald-700' : 'text-blue-700'}`}>
                             {item.accessibility_score}/100
                           </span>
                         ) : '-'}
@@ -100,7 +100,7 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                           isComplete ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                           item.status === 'failed' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
-                          'bg-yellow-100 text-yellow-900 border border-yellow-300 animate-pulse'
+                          'bg-blue-50 text-slate-900 border border-blue-200 animate-pulse'
                         }`}>
                           {item.status}
                         </span>
@@ -113,7 +113,7 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                             <>
                               <button
                                 onClick={() => onSelectAnalysis(item.id)}
-                                className="px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold transition flex items-center gap-1 text-xs shadow-xs"
+                                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition flex items-center gap-1 text-xs shadow-xs"
                                 title="Open Detailed Report"
                               >
                                 <span>Report</span>
@@ -123,10 +123,10 @@ export default function HistoryView({ history = [], onSelectAnalysis, onDeleteAn
                               <a
                                 href={getExcelDownloadUrl(item.id)}
                                 download
-                                className="p-1.5 rounded-xl bg-yellow-100 hover:bg-yellow-200 text-yellow-950 border border-yellow-300 transition"
+                                className="p-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-slate-900 border border-blue-200 transition"
                                 title="Download Excel"
                               >
-                                <FileSpreadsheet className="w-4 h-4 text-yellow-800" />
+                                <FileSpreadsheet className="w-4 h-4 text-blue-900" />
                               </a>
                             </>
                           )}

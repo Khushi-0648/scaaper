@@ -25,13 +25,13 @@ export default function FeaturesTab({ features = [] }) {
   return (
     <div className="space-y-4">
       {/* Filters and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-yellow-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
         {/* Toggle Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-yellow-50 border border-yellow-200 text-xs">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-50 border border-slate-200 text-xs overflow-x-auto scrollbar-none">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition ${
-              filter === 'all' ? 'bg-yellow-400 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+              filter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             All ({features.length})
@@ -56,13 +56,13 @@ export default function FeaturesTab({ features = [] }) {
 
         {/* Search Input */}
         <div className="relative flex-1 sm:max-w-xs">
-          <Search className="w-4 h-4 text-yellow-600 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-blue-600 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Filter features or evidence..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-yellow-50/50 border border-yellow-300 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-yellow-500 font-medium"
+            className="w-full bg-slate-50/50 border border-blue-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
           />
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function FeaturesTab({ features = [] }) {
               key={idx}
               className={`p-4 rounded-2xl border transition flex flex-col justify-between ${
                 isDetected
-                  ? 'bg-white border-yellow-200 shadow-sm hover:border-yellow-400'
+                  ? 'bg-white border-slate-200 shadow-sm hover:border-blue-500'
                   : 'bg-white/60 border-slate-200 opacity-75'
               }`}
             >
@@ -90,7 +90,7 @@ export default function FeaturesTab({ features = [] }) {
                     )}
                     <div>
                       <h4 className="text-sm font-extrabold text-slate-900">{item.feature}</h4>
-                      <span className="text-[10px] text-yellow-800 uppercase font-bold">{item.category}</span>
+                      <span className="text-[10px] text-blue-900 uppercase font-bold">{item.category}</span>
                     </div>
                   </div>
 
@@ -103,15 +103,15 @@ export default function FeaturesTab({ features = [] }) {
                       {item.status}
                     </span>
                     {isDetected && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-900 border border-yellow-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-slate-900 border border-blue-200">
                         {item.confidence}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-700 bg-yellow-50/60 p-2.5 rounded-xl border border-yellow-200/80 mb-2 leading-relaxed">
-                  <span className="text-yellow-800 font-bold block text-[10px] uppercase mb-0.5">Evidence:</span>
+                <p className="text-xs text-slate-700 bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/80 mb-2 leading-relaxed">
+                  <span className="text-blue-900 font-bold block text-[10px] uppercase mb-0.5">Evidence:</span>
                   {item.evidence}
                 </p>
               </div>

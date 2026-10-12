@@ -245,16 +245,68 @@ def analyze_technical(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
                 "details": f"Missing header. Recommendation: {sh['recommended']}"
             })
 
+    # 3. Mixed Content Check (Passive audit on HTTPS pages)
+    base_url = crawl_data.get("base_url", "")
+    is_https = base_url.startswith("https://")
+    mixed_content_items = []
+    if is_https and html:
+        soup = BeautifulSoup(html, "lxml")
+        # Check insecure images, scripts, styles, iframes
+        for tag, attr in [("img", "src"), ("script", "src"), ("link", "href"), ("iframe", "src")]:
+            for el in soup.find_all(tag):
+                src_val = el.get(attr, "")
+                if src_val.startswith("http://"):
+                    mixed_content_items.append({
+                        "tag": tag,
+                        "resource": src_val[:100],
+                        "type": "Insecure HTTP resource on HTTPS site"
+                    })
+        if mixed_content_items:
+            sec_score -= 20
+
+    # 4. Cookie Security Attributes Check
+    cookie_headers = [v for k, v in headers.items() if k.lower() == "set-cookie"]
+    cookie_audit = []
+    for c_val in cookie_headers:
+        c_lower = c_val.lower()
+        has_secure = "secure" in c_lower
+        has_httponly = "httponly" in c_lower
+        has_samesite = "samesite" in c_lower
+        c_name = c_val.split("=")[0].strip() if "=" in c_val else "Cookie"
+        cookie_audit.append({
+            "cookie": c_name[:40],
+            "secure": has_secure,
+            "httponly": has_httponly,
+            "samesite": has_samesite,
+            "status": "Hardened" if (has_secure and has_httponly) else "Needs Hardening"
+        })
+        if not has_secure or not has_httponly:
+            sec_score -= 5
+
+    # 5. Server Information Disclosure
+    server_info = headers_lower.get("server", "Hidden / Not Disclosed")
+    x_powered = headers_lower.get("x-powered-by", None)
+    disclosures = []
+    if server_info != "Hidden / Not Disclosed" and re.search(r"\d+\.\d+", server_info):
+        disclosures.append(f"Server header exposes version: {server_info}")
+        sec_score -= 5
+    if x_powered and re.search(r"\d+\.\d+", x_powered):
+        disclosures.append(f"X-Powered-By exposes version: {x_powered}")
+        sec_score -= 5
+
     # Compression check
     content_encoding = headers_lower.get("content-encoding", "None")
     # Caching check
     cache_control = headers_lower.get("cache-control", headers_lower.get("pragma", "None"))
-    server_info = headers_lower.get("server", "Hidden / Not Disclosed")
 
     return {
         "technologies": detected_tech,
         "security_headers": security_headers_results,
-        "security_score": max(10, sec_score),
+        "security_score": max(10, min(100, sec_score)),
+        "is_https": is_https,
+        "mixed_content": mixed_content_items[:10],
+        "cookie_security": cookie_audit,
+        "server_disclosures": disclosures,
         "server": server_info,
         "content_type": headers_lower.get("content-type", "Unknown"),
         "compression": content_encoding,

@@ -24,24 +24,24 @@ export default function ProgressView({ statusData, targetUrl }) {
 
   return (
     <div className="max-w-3xl mx-auto my-12 px-4 animate-in fade-in duration-300">
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border-2 border-yellow-300 shadow-xl shadow-yellow-100/60">
+      <div className="p-5 sm:p-8 rounded-3xl bg-white border-2 border-blue-200 shadow-xl shadow-blue-50/60">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <span className="text-xs font-extrabold text-yellow-800 uppercase tracking-wider bg-yellow-100 px-2 py-0.5 rounded-full border border-yellow-300">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="min-w-0">
+            <span className="text-xs font-extrabold text-blue-900 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 inline-block mb-1">
               Analysis in Progress
             </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 truncate max-w-lg mt-1">{targetUrl}</h2>
+            <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 truncate">{targetUrl}</h2>
           </div>
-          <div className="text-right">
-            <span className="text-3xl sm:text-4xl font-extrabold text-yellow-500 font-mono drop-shadow-xs">{percent}%</span>
+          <div className="text-left sm:text-right">
+            <span className="text-3xl sm:text-4xl font-extrabold text-blue-600 font-mono">{percent}%</span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-yellow-100 h-3 rounded-full overflow-hidden mb-8 border border-yellow-200">
+        <div className="w-full bg-blue-50 h-3 rounded-full overflow-hidden mb-8 border border-slate-200">
           <div
-            className="bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
+            className="bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-600 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -57,16 +57,16 @@ export default function ProgressView({ statusData, targetUrl }) {
                 key={stg.label}
                 className={`flex items-center gap-3 p-3 rounded-xl border transition ${
                   isDone
-                    ? 'bg-yellow-50/60 border-yellow-300 text-slate-900 font-semibold'
+                    ? 'bg-slate-50/60 border-blue-200 text-slate-900 font-semibold'
                     : isCurrent
-                    ? 'bg-yellow-100/90 border-yellow-400 text-yellow-950 font-bold shadow-xs'
+                    ? 'bg-blue-50/90 border-blue-500 text-slate-900 font-bold shadow-xs'
                     : 'bg-white border-slate-200 text-slate-400 font-medium'
                 }`}
               >
                 {isDone ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 ) : isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-yellow-600 animate-spin shrink-0" />
+                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
                 ) : (
                   <Circle className="w-4 h-4 text-slate-300 shrink-0" />
                 )}
@@ -77,9 +77,9 @@ export default function ProgressView({ statusData, targetUrl }) {
         </div>
 
         {/* Current Activity Ticker */}
-        <div className="flex items-center justify-between p-3.5 rounded-xl bg-yellow-50/50 border border-yellow-200 text-xs">
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/50 border border-slate-200 text-xs">
           <div className="flex items-center gap-2 overflow-hidden">
-            <Loader2 className="w-3.5 h-3.5 text-yellow-600 animate-spin shrink-0" />
+            <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin shrink-0" />
             <span className="text-slate-700 font-mono font-medium truncate">{currentStep}</span>
           </div>
           {logs.length > 0 && (
@@ -96,7 +96,7 @@ export default function ProgressView({ statusData, targetUrl }) {
 
         {/* Live Logs Drawer */}
         {showLogs && (
-          <div className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800 max-h-48 overflow-y-auto font-mono text-[11px] text-yellow-300 space-y-1 shadow-inner">
+          <div className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800 max-h-48 overflow-y-auto font-mono text-[11px] text-blue-500 space-y-1 shadow-inner">
             {logs.map((log, idx) => (
               <div key={idx} className="flex gap-2">
                 <span className="text-slate-500 shrink-0">[{idx + 1}]</span>
