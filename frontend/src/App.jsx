@@ -227,6 +227,7 @@ export default function App() {
           <DashboardView
             onNavigate={setActiveView}
             onSelectAnalysis={handleSelectHistoryAnalysis}
+            onSelectBusinessSearch={handleSelectBusinessSearch}
           />
         )}
 

@@ -13,11 +13,13 @@ import {
   ExternalLink,
   ShieldCheck,
   Zap,
-  Search
+  Search,
+  Download,
+  Calendar
 } from 'lucide-react';
-import { getDashboardStats } from '../services/api';
+import { getDashboardStats, getBusinessExcelUrl } from '../services/api';
 
-export default function DashboardView({ onNavigate, onSelectAnalysis }) {
+export default function DashboardView({ onNavigate, onSelectAnalysis, onSelectBusinessSearch }) {
   const [stats, setStats] = useState({
     total_websites_analyzed: 0,
     total_businesses_found: 0,
@@ -218,12 +220,21 @@ export default function DashboardView({ onNavigate, onSelectAnalysis }) {
               <MapPin className="w-4 h-4 text-blue-600" />
               <span>Recent Business Searches</span>
             </h3>
-            <button 
-              onClick={() => onNavigate('business')}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
-            >
-              Search New
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onNavigate('history')}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+              >
+                View History
+              </button>
+              <span className="text-slate-300">•</span>
+              <button 
+                onClick={() => onNavigate('business')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
+              >
+                Search New
+              </button>
+            </div>
           </div>
 
           {stats.recent_searches.length === 0 ? (
@@ -238,23 +249,73 @@ export default function DashboardView({ onNavigate, onSelectAnalysis }) {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {stats.recent_searches.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => onNavigate('business')}
-                  className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 flex items-center justify-between cursor-pointer btn-motion"
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {item.keyword} in {item.location}
+              {stats.recent_searches.map((item) => {
+                const searchLabel = item.query || `${item.keyword} in ${item.location}`;
+                const bizCount = item.results_count ?? item.business_count ?? 0;
+                const webCount = item.websites_count ?? 0;
+                const formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : null;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition group"
+                  >
+                    <div 
+                      onClick={() => onSelectBusinessSearch ? onSelectBusinessSearch(item) : onNavigate('business')}
+                      className="min-w-0 flex-1 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
+                          {searchLabel}
+                        </span>
+                        {item.location && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700 font-medium shrink-0">
+                            {item.location}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-3">
+                        <span className="font-semibold text-slate-700">
+                          <strong className="text-blue-600 font-bold">{bizCount}</strong> businesses found
+                        </span>
+                        {webCount > 0 && (
+                          <span className="text-emerald-600 font-semibold">
+                            • {webCount} with websites
+                          </span>
+                        )}
+                        {formattedDate && (
+                          <span className="text-slate-400 flex items-center gap-1">
+                            • <Calendar className="w-3 h-3 inline" /> {formattedDate}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-400">
-                      {item.business_count || 10} businesses found
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                      <a
+                        href={getBusinessExcelUrl(item.id)}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 transition shadow-2xs"
+                        title="Download Master Excel Report"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                      </a>
+                      
+                      <button
+                        type="button"
+                        onClick={() => onSelectBusinessSearch ? onSelectBusinessSearch(item) : onNavigate('business')}
+                        className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1 transition shadow-2xs"
+                        title="Open dataset in Business Finder"
+                      >
+                        <span>Open</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
