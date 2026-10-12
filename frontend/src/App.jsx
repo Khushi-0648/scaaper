@@ -79,12 +79,18 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [activeBatchId, setActiveBatchId] = useState(null);
+  const [activeBusinessSearchId, setActiveBusinessSearchId] = useState(null);
   const [history, setHistory] = useState([]);
   const pollTimerRef = useRef(null);
 
   useEffect(() => {
     loadHistoryList();
   }, []);
+
+  const handleSelectBusinessSearch = (bizSearch) => {
+    setActiveBusinessSearchId(bizSearch.id);
+    setActiveView('business');
+  };
 
   const loadHistoryList = async () => {
     try {
@@ -227,6 +233,7 @@ export default function App() {
         {/* VIEW 2: BUSINESS FINDER */}
         {activeView === 'business' && (
           <BusinessFinderView
+            initialSearchId={activeBusinessSearchId}
             onAnalyzeWebsite={handleAnalyzeFromBusiness}
             onStartBatch={handleStartBatch}
           />
@@ -252,6 +259,7 @@ export default function App() {
             history={history}
             onSelectAnalysis={handleSelectHistoryAnalysis}
             onDeleteAnalysis={handleDeleteAnalysis}
+            onSelectBusinessSearch={handleSelectBusinessSearch}
           />
         )}
 

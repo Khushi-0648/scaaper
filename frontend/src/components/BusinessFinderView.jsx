@@ -40,7 +40,7 @@ import {
   getBusinessPdfUrl 
 } from '../services/api';
 
-export default function BusinessFinderView({ onAnalyzeWebsite, onStartBatch }) {
+export default function BusinessFinderView({ onAnalyzeWebsite, onStartBatch, initialSearchId }) {
   const [location, setLocation] = useState('New York, USA');
   const [keyword, setKeyword] = useState('Restaurant');
   const [limit, setLimit] = useState(25);
@@ -78,7 +78,10 @@ export default function BusinessFinderView({ onAnalyzeWebsite, onStartBatch }) {
 
   useEffect(() => {
     loadRecentSearches();
-  }, []);
+    if (initialSearchId) {
+      handleLoadPastSearch({ id: initialSearchId });
+    }
+  }, [initialSearchId]);
 
   const [refreshCount, setRefreshCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
