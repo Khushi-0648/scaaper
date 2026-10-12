@@ -10,6 +10,7 @@ from app.database.db import (
     update_batch_job_progress,
     get_batch_job,
     create_analysis,
+    get_analysis,
     update_business_analysis_link
 )
 
@@ -88,6 +89,28 @@ class BatchAnalysisManager:
                 }
                 execute_analysis_job(analysis_id, item["url"], item["domain"], opts)
                 item["status"] = "completed"
+
+                # Enrich item with metrics for summary and batch reporting
+                try:
+                    record = get_analysis(analysis_id)
+                    if record and record.get("full_data"):
+                        data = record["full_data"]
+                        scores = data.get("health_scores", {}) or {}
+                        item["overall_score"] = scores.get("overall", 0)
+                        item["seo_score"] = scores.get("seo", 0)
+                        item["performance_score"] = scores.get("performance", 0)
+                        item["security_score"] = scores.get("security", 0)
+                        contacts = data.get("contact_details", {}) or {}
+                        emails = contacts.get("emails") or []
+                        phones = contacts.get("phones") or []
+                        item["email"] = emails[0] if emails else None
+                        item["phone"] = phones[0] if phones else None
+                        item["tech_stack"] = [t.get("name") for t in data.get("tech_stack", []) if t.get("name")][:3]
+                        drawbacks = data.get("advantages_drawbacks", {}).get("drawbacks", []) or []
+                        item["issues_count"] = len(drawbacks)
+                except Exception:
+                    pass
+
                 completed += 1
                 if item.get("business_id"):
                     update_business_analysis_link(item["business_id"], analysis_id, "completed")

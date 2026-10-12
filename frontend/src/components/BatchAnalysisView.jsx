@@ -11,9 +11,22 @@ import {
   FileSpreadsheet,
   PlusCircle,
   MapPin,
-  Play
+  Play,
+  Search,
+  Filter,
+  ShieldCheck,
+  Gauge,
+  Zap,
+  Globe,
+  Mail,
+  Phone,
+  Cpu,
+  AlertTriangle,
+  Download,
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
-import { getBatchJob, getAllBatchJobs, startBatchAnalysis } from '../services/api';
+import { getBatchJob, getAllBatchJobs, startBatchAnalysis, getBatchExcelUrl } from '../services/api';
 
 export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onNavigate }) {
   const [currentJob, setCurrentJob] = useState(null);
@@ -26,6 +39,10 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
   const [urlsInput, setUrlsInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Table filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadAllJobs();
@@ -140,31 +157,75 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
   const running = currentJob?.running_items || 0;
   const queued = currentJob?.queued_items || 0;
   const failed = currentJob?.failed_items || 0;
-
   const pct = total > 0 ? Math.round(((completed + failed) / total) * 100) : 0;
+
+  // Aggregate Metrics for completed items
+  const completedItems = (currentJob?.items || []).filter(it => it.status === 'completed');
+  const avgOverall = completedItems.length > 0 
+    ? Math.round(completedItems.reduce((acc, it) => acc + (it.overall_score || 0), 0) / completedItems.length) 
+    : null;
+  const avgSeo = completedItems.length > 0 
+    ? Math.round(completedItems.reduce((acc, it) => acc + (it.seo_score || 0), 0) / completedItems.length) 
+    : null;
+  const avgPerf = completedItems.length > 0 
+    ? Math.round(completedItems.reduce((acc, it) => acc + (it.performance_score || 0), 0) / completedItems.length) 
+    : null;
+  const totalIssues = completedItems.reduce((acc, it) => acc + (it.issues_count || 0), 0);
+
+  // Filtered items
+  const filteredItems = (currentJob?.items || []).filter(item => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || 
+      (item.business_name && item.business_name.toLowerCase().includes(q)) ||
+      (item.url && item.url.toLowerCase().includes(q)) ||
+      (item.domain && item.domain.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getScoreBadge = (score) => {
+    if (score == null) return { bg: 'bg-slate-100 text-slate-500 border-slate-200', text: '—' };
+    if (score >= 80) return { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', text: `${score}/100` };
+    if (score >= 60) return { bg: 'bg-amber-50 text-amber-700 border-amber-200', text: `${score}/100` };
+    return { bg: 'bg-rose-50 text-rose-700 border-rose-200', text: `${score}/100` };
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Batch Website Analysis
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Queue and audit multiple websites concurrently with automated rate limiting and full audit dossiers.
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+              <Layers className="w-5 h-5" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Batch Website Analysis
+            </h1>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
+            Simultaneously audit and benchmark multiple websites, collect contact leads, detect tech stacks, and export comparative executive dossiers.
           </p>
         </div>
 
-        {onNavigate && (
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('business')}
+              className="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition flex items-center gap-1.5"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              <span>Find Businesses to Audit</span>
+            </button>
+          )}
           <button
-            onClick={() => onNavigate('business')}
-            className="self-start md:self-auto px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition flex items-center gap-1.5"
+            onClick={loadAllJobs}
+            className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition"
+            title="Refresh batch list"
           >
-            <MapPin className="w-3.5 h-3.5 text-blue-600" />
-            <span>Find Businesses to Batch Audit</span>
+            <RefreshCw className="w-4 h-4" />
           </button>
-        )}
+        </div>
       </div>
 
       {/* Manual Batch Creation Form */}
@@ -198,7 +259,7 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
               <p className="text-[11px] text-slate-400">
-                Helpful label to identify this batch run in history.
+                Custom label to identify this batch in reports and history.
               </p>
             </div>
 
@@ -248,25 +309,37 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
         </form>
       </div>
 
-      {/* Active Job Progress Card */}
+      {/* Active Job Progress Dashboard */}
       {currentJob ? (
         <div className="p-5 sm:p-8 rounded-3xl bg-white border-2 border-blue-200 shadow-xl shadow-blue-50/50 space-y-6 card-motion">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div>
-              <h2 className="text-lg font-black text-slate-950">{currentJob.title}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-black text-slate-950">{currentJob.title}</h2>
+                <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${
+                  currentJob.status === 'completed'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : currentJob.status === 'running'
+                    ? 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse'
+                    : 'bg-blue-50 text-blue-900 border-blue-200'
+                }`}>
+                  {currentJob.status}
+                </span>
+              </div>
               <p className="text-xs text-slate-500 font-mono mt-0.5">Job ID: {currentJob.id}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider border ${
-                currentJob.status === 'completed'
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : currentJob.status === 'running'
-                  ? 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse'
-                  : 'bg-blue-50 text-blue-900 border-blue-200'
-              }`}>
-                {currentJob.status}
-              </span>
-            </div>
+
+            {/* Export Master Batch Excel Button */}
+            {completedItems.length > 0 && (
+              <a
+                href={getBatchExcelUrl(currentJob.id)}
+                download
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm border border-emerald-700 transition active:scale-95 btn-motion shrink-0"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-white" />
+                <span>Export Batch Excel (.xlsx)</span>
+              </a>
+            )}
           </div>
 
           {/* Progress Bar */}
@@ -283,7 +356,7 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
             </div>
           </div>
 
-          {/* 4 Metrics Counters */}
+          {/* 4 Status Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center card-motion">
               <div className="text-2xl font-black text-emerald-950">{completed}</div>
@@ -303,51 +376,237 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
             </div>
           </div>
 
-          {/* Itemized Table */}
+          {/* Rollup Executive KPI Cards */}
+          {completedItems.length > 0 && (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Batch Comparative Intelligence Summary
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div className="flex items-center justify-between text-slate-500 mb-1">
+                    <span className="text-[11px] font-semibold">Avg Health</span>
+                    <Gauge className="w-3.5 h-3.5 text-blue-500" />
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900">{avgOverall ?? '—'}/100</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Overall benchmark</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div className="flex items-center justify-between text-slate-500 mb-1">
+                    <span className="text-[11px] font-semibold">Avg SEO</span>
+                    <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900">{avgSeo ?? '—'}/100</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Search readiness</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div className="flex items-center justify-between text-slate-500 mb-1">
+                    <span className="text-[11px] font-semibold">Avg Performance</span>
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900">{avgPerf ?? '—'}/100</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Page speed rating</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div className="flex items-center justify-between text-slate-500 mb-1">
+                    <span className="text-[11px] font-semibold">Pitch Opportunities</span>
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                  </div>
+                  <div className="text-xl font-extrabold text-rose-700">{totalIssues} Issues</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Key client growth gaps</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search & Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search websites or businesses..."
+                className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <span className="text-[11px] font-bold text-slate-400 mr-1 flex items-center gap-1">
+                <Filter className="w-3 h-3" /> Filter:
+              </span>
+              {['all', 'completed', 'running', 'failed'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize transition ${
+                    statusFilter === st
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Itemized Comparison Table */}
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="w-full text-left text-xs border-collapse min-w-[540px]">
+            <table className="w-full text-left text-xs border-collapse min-w-[760px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase">
-                  <th className="py-2.5 px-4">#</th>
-                  <th className="py-2.5 px-4">Business / Site</th>
-                  <th className="py-2.5 px-4">Website URL</th>
-                  <th className="py-2.5 px-4">Status</th>
-                  <th className="py-2.5 px-4 text-right">Audit Dossier</th>
+                  <th className="py-2.5 px-3">#</th>
+                  <th className="py-2.5 px-3">Business &amp; Domain</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
+                  <th className="py-2.5 px-3 text-center">Health</th>
+                  <th className="py-2.5 px-3 text-center">SEO</th>
+                  <th className="py-2.5 px-3 text-center">Perf</th>
+                  <th className="py-2.5 px-3">Tech Stack</th>
+                  <th className="py-2.5 px-3">Contacts</th>
+                  <th className="py-2.5 px-3 text-center">Gaps</th>
+                  <th className="py-2.5 px-3 text-right">Audit Dossier</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(currentJob.items || []).map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/60 transition">
-                    <td className="py-2.5 px-4 font-mono text-slate-400">{idx + 1}</td>
-                    <td className="py-2.5 px-4 font-bold text-slate-900">{item.business_name}</td>
-                    <td className="py-2.5 px-4 font-mono text-blue-700 truncate max-w-xs">{item.url}</td>
-                    <td className="py-2.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                        item.status === 'completed'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : item.status === 'running'
-                          ? 'bg-blue-100 text-blue-800 animate-pulse'
-                          : item.status === 'failed'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right">
-                      {item.analysis_id && item.status === 'completed' ? (
-                        <button
-                          onClick={() => onSelectAnalysis(item.analysis_id)}
-                          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold text-[11px] text-white transition shadow-xs"
-                        >
-                          View Audit
-                        </button>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">—</span>
-                      )}
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                      No websites match your filter criteria.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredItems.map((item, idx) => {
+                    const healthBadge = getScoreBadge(item.overall_score);
+                    const seoBadge = getScoreBadge(item.seo_score);
+                    const perfBadge = getScoreBadge(item.performance_score);
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/60 transition">
+                        <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-bold text-slate-900 truncate max-w-[180px]">
+                            {item.business_name}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="font-mono text-slate-500 text-[11px] truncate max-w-[160px]">
+                              {item.url}
+                            </span>
+                            <a 
+                              href={item.url} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-blue-500 hover:text-blue-700 shrink-0"
+                              title="Visit website"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase ${
+                            item.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : item.status === 'running'
+                              ? 'bg-blue-100 text-blue-800 animate-pulse'
+                              : item.status === 'failed'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {item.status === 'completed' ? (
+                            <span className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${healthBadge.bg}`}>
+                              {healthBadge.text}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {item.status === 'completed' ? (
+                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${seoBadge.bg}`}>
+                              {seoBadge.text}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {item.status === 'completed' ? (
+                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${perfBadge.bg}`}>
+                              {perfBadge.text}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {item.tech_stack && item.tech_stack.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-[160px]">
+                              {item.tech_stack.map((t, ti) => (
+                                <span key={ti} className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">Standard Stack</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex flex-col gap-0.5">
+                            {item.email ? (
+                              <a href={`mailto:${item.email}`} className="flex items-center gap-1 text-[11px] text-blue-600 hover:underline truncate max-w-[130px]">
+                                <Mail className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{item.email}</span>
+                              </a>
+                            ) : null}
+                            {item.phone ? (
+                              <a href={`tel:${item.phone}`} className="flex items-center gap-1 text-[11px] text-emerald-600 hover:underline truncate max-w-[130px]">
+                                <Phone className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{item.phone}</span>
+                              </a>
+                            ) : null}
+                            {!item.email && !item.phone && (
+                              <span className="text-slate-400 text-[11px]">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {item.status === 'completed' ? (
+                            <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
+                              {item.issues_count ?? 0}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {item.analysis_id && item.status === 'completed' ? (
+                            <button
+                              onClick={() => onSelectAnalysis(item.analysis_id)}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold text-[11px] text-white transition shadow-xs whitespace-nowrap"
+                            >
+                              View Audit
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -357,20 +616,33 @@ export default function BatchAnalysisView({ activeBatchId, onSelectAnalysis, onN
       {/* Batch Jobs History */}
       {allJobs.length > 0 && (
         <div className="p-6 rounded-3xl bg-white border border-slate-200 space-y-4">
-          <h3 className="font-extrabold text-base text-slate-950">Previous Batch Jobs</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-base text-slate-950">Previous Batch Jobs</h3>
+            <span className="text-xs text-slate-400">{allJobs.length} total jobs</span>
+          </div>
           <div className="divide-y divide-slate-100">
             {allJobs.map((j) => (
               <div 
                 key={j.id} 
                 onClick={() => handleSelectJob(j.id)}
-                className="py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 px-3 rounded-xl transition"
+                className={`py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 px-3 rounded-xl transition ${
+                  currentJob?.id === j.id ? 'bg-blue-50/60 border border-blue-200' : ''
+                }`}
               >
                 <div>
                   <div className="font-bold text-sm text-slate-900">{j.title}</div>
-                  <div className="text-xs text-slate-500">{j.total_items} websites &bull; {j.created_at}</div>
+                  <div className="text-xs text-slate-500">
+                    {j.total_items} websites &bull; {j.created_at ? j.created_at.replace('T', ' ').slice(0, 19) : ''}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-900 border border-slate-200">
+                  <span className={`text-xs font-extrabold px-2 py-0.5 rounded-lg border ${
+                    j.status === 'completed' 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : j.status === 'running'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-200'
+                  }`}>
                     {j.status}
                   </span>
                   <ArrowRight className="w-4 h-4 text-slate-400" />

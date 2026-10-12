@@ -14,7 +14,7 @@ from app.crawler.pipeline import execute_analysis_job, REPORTS_DIR
 from app.providers.manager import search_manager, normalize_business_query
 from app.services.batch_manager import batch_manager
 from app.analyzers.competitor import compare_competitors
-from app.exporters.excel_exporter import generate_business_excel_report
+from app.exporters.excel_exporter import generate_business_excel_report, generate_batch_excel_report
 from app.exporters.pdf_exporter import generate_business_pdf_report
 from app.database.db import (
     create_analysis,
@@ -392,6 +392,24 @@ def get_batch_status_endpoint(batch_id: str):
 @router.get("/batch-jobs")
 def get_all_batch_jobs_endpoint():
     return get_all_batch_jobs()
+
+@router.get("/batch/{batch_id}/excel")
+def download_batch_excel(batch_id: str):
+    validate_safe_id(batch_id)
+    record = get_batch_job(batch_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Batch job not found.")
+
+    output_path = safe_report_path(f"batch_{batch_id}.xlsx")
+    generate_batch_excel_report(record, output_path)
+
+    batch_title = sanitize_filename(record.get('title', 'batch_audit'))
+    filename = f"{batch_title}_comparison.xlsx"
+    return FileResponse(
+        path=output_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # ================= COMPETITOR COMPARISON =================
 

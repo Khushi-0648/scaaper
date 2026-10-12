@@ -595,3 +595,162 @@ def generate_business_excel_report(search_data: Dict[str, Any], output_path: str
         os.makedirs(dir_path, exist_ok=True)
     wb.save(output_path)
     return output_path
+
+def generate_batch_excel_report(batch_data: Dict[str, Any], output_path: str) -> str:
+    """
+    Generates a high-level comparative executive workbook summarizing all audited websites
+    in a batch. Includes performance, SEO, security, tech stack, and lead intelligence.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Batch Audit Comparison"
+    ws.views.sheetView[0].showGridLines = True
+
+    title = batch_data.get("title", "Batch Website Analysis")
+    created_at = (batch_data.get("created_at") or "")[:19].replace("T", " ")
+    items = batch_data.get("items", []) or []
+
+    # Title & Metadata
+    ws["A1"] = "BATCH WEBSITE AUDIT COMPARISON DOSSIER"
+    ws["A1"].font = TITLE_FONT
+    ws["A2"] = f"Batch Title: {title} | Run Date: {created_at} UTC | Engine: WebIntel AI Enterprise Suite"
+    ws["A2"].font = SUBTITLE_FONT
+
+    # Calculate Summary KPIs
+    completed_items = [it for it in items if it.get("status") == "completed"]
+    avg_score = round(sum(it.get("overall_score", 0) for it in completed_items) / len(completed_items)) if completed_items else 0
+    avg_seo = round(sum(it.get("seo_score", 0) for it in completed_items) / len(completed_items)) if completed_items else 0
+    avg_perf = round(sum(it.get("performance_score", 0) for it in completed_items) / len(completed_items)) if completed_items else 0
+    total_issues = sum(it.get("issues_count", 0) for it in completed_items)
+
+    # KPI Summary Cards (Row 4-5)
+    summary_cards = [
+        ("TOTAL SITES", len(items), "Total websites queued"),
+        ("COMPLETED", len(completed_items), "Successfully audited"),
+        ("AVG HEALTH SCORE", f"{avg_score}/100", "Across all completed sites"),
+        ("AVG SEO SCORE", f"{avg_seo}/100", "Search engine optimization"),
+        ("TOTAL GAPS / ISSUES", total_issues, "High-leverage pitch opportunities")
+    ]
+
+    for c_idx, (card_title, card_val, card_sub) in enumerate(summary_cards, start=1):
+        c_letter = get_column_letter(c_idx * 2 - 1)
+        next_c_letter = get_column_letter(c_idx * 2)
+        ws.merge_cells(f"{c_letter}4:{next_c_letter}4")
+        ws.merge_cells(f"{c_letter}5:{next_c_letter}5")
+        
+        ws[f"{c_letter}4"] = f"{card_title}: {card_val}"
+        ws[f"{c_letter}4"].font = Font(name="Segoe UI", size=11, bold=True, color=WHITE_TEXT)
+        ws[f"{c_letter}4"].fill = PatternFill(start_color=BLUE_PRIMARY, end_color=BLUE_PRIMARY, fill_type="solid")
+        ws[f"{c_letter}4"].alignment = Alignment(horizontal="center", vertical="center")
+
+        ws[f"{c_letter}5"] = card_sub
+        ws[f"{c_letter}5"].font = Font(name="Segoe UI", size=9, italic=True, color=MUTED_TEXT)
+        ws[f"{c_letter}5"].fill = PatternFill(start_color=BLUE_LIGHT, end_color=BLUE_LIGHT, fill_type="solid")
+        ws[f"{c_letter}5"].alignment = Alignment(horizontal="center", vertical="center")
+
+    headers = [
+        "#",
+        "Company / Business",
+        "Website URL",
+        "Audit Status",
+        "Overall Health",
+        "SEO Score",
+        "Performance",
+        "Security",
+        "Contact Email",
+        "Contact Phone",
+        "Detected Tech Stack",
+        "Issues Count",
+        "Pitch / Recommendation"
+    ]
+
+    header_row = 7
+    ws.append([]) # blank row 6
+    ws.row_dimensions[header_row].height = 26
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=header_row, column=c_idx, value=h)
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = THIN_BORDER
+
+    current_row = header_row + 1
+    for idx, it in enumerate(items, start=1):
+        status = it.get("status", "pending")
+        ov_score = it.get("overall_score")
+        s_score = it.get("seo_score")
+        p_score = it.get("performance_score")
+        sec_score = it.get("security_score")
+        email = it.get("email") or ""
+        phone = it.get("phone") or ""
+        tech = ", ".join(it.get("tech_stack", [])) if it.get("tech_stack") else "Standard Web Stack"
+        issues = it.get("issues_count", 0)
+
+        # Recommendation logic
+        if status == "failed":
+            rec = f"Failed to audit: {it.get('error') or 'Unreachable URL'}"
+        elif ov_score and ov_score < 60:
+            rec = "Critical revamp needed: Heavy SEO and performance bottlenecks detected"
+        elif ov_score and ov_score < 75:
+            rec = "Modernization opportunity: Target mobile speed, Core Web Vitals, and meta optimization"
+        else:
+            rec = "Strong baseline: Pitch ongoing conversion rate optimization and technical monitoring"
+
+        row_data = [
+            idx,
+            it.get("business_name") or it.get("domain") or "Target Site",
+            it.get("url") or "",
+            status.upper(),
+            f"{ov_score}/100" if ov_score is not None else "—",
+            f"{s_score}/100" if s_score is not None else "—",
+            f"{p_score}/100" if p_score is not None else "—",
+            f"{sec_score}/100" if sec_score is not None else "—",
+            email,
+            phone,
+            tech,
+            issues if status == "completed" else "—",
+            rec
+        ]
+
+        ws.append(row_data)
+        ws.row_dimensions[current_row].height = 22
+
+        for c_idx in range(1, len(headers) + 1):
+            c = ws.cell(row=current_row, column=c_idx)
+            c.font = REGULAR_FONT
+            c.border = THIN_BORDER
+            c.alignment = Alignment(vertical="center", horizontal="center" if c_idx in [1, 4, 5, 6, 7, 8, 12] else "left")
+
+            # Color code Overall Health
+            if c_idx == 5 and ov_score is not None:
+                if ov_score >= 80:
+                    c.font = Font(name="Segoe UI", size=10, bold=True, color="059669")
+                elif ov_score < 60:
+                    c.font = Font(name="Segoe UI", size=10, bold=True, color="DC2626")
+
+        current_row += 1
+
+    # Column widths
+    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["B"].width = 28
+    ws.column_dimensions["C"].width = 34
+    ws.column_dimensions["D"].width = 16
+    ws.column_dimensions["E"].width = 16
+    ws.column_dimensions["F"].width = 14
+    ws.column_dimensions["G"].width = 14
+    ws.column_dimensions["H"].width = 14
+    ws.column_dimensions["I"].width = 26
+    ws.column_dimensions["J"].width = 20
+    ws.column_dimensions["K"].width = 26
+    ws.column_dimensions["L"].width = 14
+    ws.column_dimensions["M"].width = 46
+
+    last_col_letter = get_column_letter(len(headers))
+    ws.auto_filter.ref = f"A{header_row}:{last_col_letter}{ws.max_row}"
+
+    dir_path = os.path.dirname(output_path)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
+    wb.save(output_path)
+    return output_path
+

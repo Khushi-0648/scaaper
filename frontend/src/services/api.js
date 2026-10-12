@@ -134,6 +134,10 @@ export async function getAllBatchJobs() {
   return res.json();
 }
 
+export function getBatchExcelUrl(id) {
+  return `${API_BASE}/batch/${id}/excel`;
+}
+
 // ================= COMPETITOR COMPARISON =================
 
 export async function compareCompetitors(analysisIds) {
