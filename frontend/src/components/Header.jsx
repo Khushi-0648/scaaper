@@ -29,23 +29,18 @@ export default function Header({ activeView, setActiveView, historyCount = 0 }) 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="h-16 flex items-center justify-between gap-3 sm:gap-4">
           
-          {/* Brand Logo with Gentle Float Motion */}
+          {/* Brand Logo */}
           <div 
             onClick={() => { setActiveView('dashboard'); setMobileMenuOpen(false); }}
-            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0 btn-motion"
+            className="flex items-center cursor-pointer group shrink-0 btn-motion"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-blue-700 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/25 group-hover:scale-105 group-hover:shadow-blue-500/40 transition-all duration-300">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-float" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-                  WebIntel<span className="text-blue-600">.AI</span>
-                </span>
-                <span className="badge bg-primary text-white rounded-pill px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                  Pro
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+                WebIntel<span className="text-blue-600">.AI</span>
+              </span>
+              <span className="badge bg-primary text-white rounded-pill px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                Pro
+              </span>
             </div>
           </div>
 
