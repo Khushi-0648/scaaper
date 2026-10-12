@@ -34,34 +34,53 @@ from app.database.db import (
 
 router = APIRouter(prefix="/api")
 
+import re
+from pydantic import BaseModel, HttpUrl, Field
+from typing import Optional, List, Dict, Any
+
+def sanitize_filename(name: str) -> str:
+    clean = re.sub(r'[^a-zA-Z0-9_.-]', '_', str(name)).strip('_')
+    return clean[:100] or "report"
+
+def validate_safe_id(id_val: str) -> str:
+    if not id_val or not re.match(r'^[a-zA-Z0-9_-]{1,64}$', id_val):
+        raise HTTPException(status_code=400, detail="Invalid resource identifier format.")
+    return id_val
+
+def safe_report_path(filename: str) -> str:
+    full_path = os.path.abspath(os.path.join(REPORTS_DIR, filename))
+    if not full_path.startswith(os.path.abspath(REPORTS_DIR)):
+        raise HTTPException(status_code=400, detail="Path traversal violation detected.")
+    return full_path
+
 # ================= DATA MODELS =================
 
 class AnalyzeRequest(BaseModel):
-    url: str
-    max_pages: Optional[int] = 25
-    crawl_delay: Optional[float] = 0.2
+    url: str = Field(..., max_length=2048)
+    max_pages: Optional[int] = Field(25, ge=1, le=50)
+    crawl_delay: Optional[float] = Field(0.2, ge=0.0, le=5.0)
     same_domain_only: Optional[bool] = True
     follow_external: Optional[bool] = False
     js_rendering: Optional[str] = "auto"
 
 class ValidateUrlRequest(BaseModel):
-    url: str
+    url: str = Field(..., max_length=2048)
 
 class BusinessSearchRequest(BaseModel):
-    query: Optional[str] = None
-    location: Optional[str] = None
-    keyword: Optional[str] = None
-    radius_km: Optional[int] = 10
-    limit: Optional[int] = 50
+    query: Optional[str] = Field(None, max_length=250)
+    location: Optional[str] = Field(None, max_length=150)
+    keyword: Optional[str] = Field(None, max_length=150)
+    radius_km: Optional[int] = Field(10, ge=1, le=100)
+    limit: Optional[int] = Field(50, ge=1, le=50)
     provider: Optional[str] = None
     refresh: Optional[bool] = False
-    offset: Optional[int] = 0
-    exclude_names: Optional[List[str]] = []
+    offset: Optional[int] = Field(0, ge=0, le=500)
+    exclude_names: Optional[List[str]] = Field([], max_length=100)
 
 class BatchAnalyzeRequest(BaseModel):
-    title: Optional[str] = "Batch Website Analysis"
-    search_id: Optional[str] = None
-    items: List[Dict[str, Any]] # [{"business_id": "...", "website": "...", "business_name": "..."}]
+    title: Optional[str] = Field("Batch Website Analysis", max_length=200)
+    search_id: Optional[str] = Field(None, max_length=64)
+    items: List[Dict[str, Any]] = Field(..., max_length=50)
 
 class CompetitorCompareRequest(BaseModel):
     analysis_ids: List[str]
@@ -156,15 +175,16 @@ def get_analysis_results(analysis_id: str):
 @router.get("/analyze/{analysis_id}/excel")
 @router.get("/websites/{analysis_id}/excel")
 def download_excel(analysis_id: str):
+    validate_safe_id(analysis_id)
     record = get_analysis(analysis_id)
     if not record:
         raise HTTPException(status_code=404, detail="Analysis ID not found.")
 
-    excel_path = os.path.join(REPORTS_DIR, f"{analysis_id}.xlsx")
+    excel_path = safe_report_path(f"{analysis_id}.xlsx")
     if not os.path.exists(excel_path):
         raise HTTPException(status_code=404, detail="Excel report not generated or missing.")
 
-    filename = f"{record['domain']}_webintel_report.xlsx"
+    filename = f"{sanitize_filename(record['domain'])}_webintel_report.xlsx"
     return FileResponse(
         path=excel_path,
         filename=filename,
@@ -174,15 +194,16 @@ def download_excel(analysis_id: str):
 @router.get("/analyze/{analysis_id}/pdf")
 @router.get("/websites/{analysis_id}/pdf")
 def download_pdf(analysis_id: str):
+    validate_safe_id(analysis_id)
     record = get_analysis(analysis_id)
     if not record:
         raise HTTPException(status_code=404, detail="Analysis ID not found.")
 
-    pdf_path = os.path.join(REPORTS_DIR, f"{analysis_id}.pdf")
+    pdf_path = safe_report_path(f"{analysis_id}.pdf")
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF report not generated or missing.")
 
-    filename = f"{record['domain']}_webintel_audit.pdf"
+    filename = f"{sanitize_filename(record['domain'])}_webintel_audit.pdf"
     return FileResponse(
         path=pdf_path,
         filename=filename,
@@ -192,12 +213,13 @@ def download_pdf(analysis_id: str):
 @router.get("/analyze/{analysis_id}/json")
 @router.get("/websites/{analysis_id}/json")
 def download_json(analysis_id: str):
+    validate_safe_id(analysis_id)
     record = get_analysis(analysis_id)
     if not record or not record.get("full_data"):
         raise HTTPException(status_code=404, detail="Analysis data not found.")
 
     content = json.dumps(record["full_data"], indent=2)
-    filename = f"{record['domain']}_analysis.json"
+    filename = f"{sanitize_filename(record['domain'])}_analysis.json"
     return Response(
         content=content,
         media_type="application/json",
@@ -207,6 +229,7 @@ def download_json(analysis_id: str):
 @router.get("/analyze/{analysis_id}/csv")
 @router.get("/websites/{analysis_id}/csv")
 def download_csv(analysis_id: str):
+    validate_safe_id(analysis_id)
     record = get_analysis(analysis_id)
     if not record or not record.get("full_data"):
         raise HTTPException(status_code=404, detail="Analysis data not found.")
@@ -214,7 +237,7 @@ def download_csv(analysis_id: str):
     pages = record["full_data"].get("pages", [])
     df = pd.DataFrame(pages)
     csv_str = df.to_csv(index=False)
-    filename = f"{record['domain']}_pages.csv"
+    filename = f"{sanitize_filename(record['domain'])}_pages.csv"
     return Response(
         content=csv_str,
         media_type="text/csv",
@@ -274,6 +297,7 @@ def get_all_business_searches_endpoint():
 
 @router.delete("/business/search/{search_id}")
 def delete_business_search_endpoint(search_id: str):
+    validate_safe_id(search_id)
     success = delete_business_search(search_id)
     if not success:
         raise HTTPException(status_code=404, detail="Business search not found or already deleted.")
@@ -286,14 +310,17 @@ def clear_all_business_searches_endpoint():
 
 @router.get("/business/search/{search_id}/excel")
 def download_business_excel(search_id: str):
+    validate_safe_id(search_id)
     record = get_business_search(search_id)
     if not record:
         raise HTTPException(status_code=404, detail="Business search not found.")
 
-    output_path = os.path.join(REPORTS_DIR, f"business_{search_id}.xlsx")
+    output_path = safe_report_path(f"business_{search_id}.xlsx")
     generate_business_excel_report(record, output_path)
 
-    filename = f"{record['location']}_{record['keyword']}_businesses.xlsx".replace(" ", "_")
+    loc = sanitize_filename(record.get('location', 'location'))
+    kw = sanitize_filename(record.get('keyword', 'businesses'))
+    filename = f"{loc}_{kw}_businesses.xlsx"
     return FileResponse(
         path=output_path,
         filename=filename,
@@ -306,7 +333,7 @@ def download_all_businesses_excel():
     if not businesses:
         raise HTTPException(status_code=404, detail="No businesses found in directory.")
 
-    output_path = os.path.join(REPORTS_DIR, "all_businesses_directory.xlsx")
+    output_path = safe_report_path("all_businesses_directory.xlsx")
     search_data = {
         "query": "All Discovered Businesses",
         "location": "Global Directory",
@@ -323,14 +350,17 @@ def download_all_businesses_excel():
 
 @router.get("/business/search/{search_id}/pdf")
 def download_business_pdf(search_id: str):
+    validate_safe_id(search_id)
     record = get_business_search(search_id)
     if not record:
         raise HTTPException(status_code=404, detail="Business search not found.")
 
-    output_path = os.path.join(REPORTS_DIR, f"business_{search_id}.pdf")
+    output_path = safe_report_path(f"business_{search_id}.pdf")
     generate_business_pdf_report(record, output_path)
 
-    filename = f"{record['location']}_{record['keyword']}_opportunities.pdf".replace(" ", "_")
+    loc = sanitize_filename(record.get('location', 'location'))
+    kw = sanitize_filename(record.get('keyword', 'opportunities'))
+    filename = f"{loc}_{kw}_opportunities.pdf"
     return FileResponse(
         path=output_path,
         filename=filename,
@@ -389,13 +419,14 @@ def list_history():
 
 @router.delete("/history/{analysis_id}")
 def remove_history(analysis_id: str):
+    validate_safe_id(analysis_id)
     success = delete_analysis(analysis_id)
     if not success:
         raise HTTPException(status_code=404, detail="Analysis record not found.")
 
-    # Remove excel / pdf if exists
+    # Remove excel / pdf safely if exists
     for ext in [".xlsx", ".pdf"]:
-        p = os.path.join(REPORTS_DIR, f"{analysis_id}{ext}")
+        p = safe_report_path(f"{analysis_id}{ext}")
         if os.path.exists(p):
             try:
                 os.remove(p)

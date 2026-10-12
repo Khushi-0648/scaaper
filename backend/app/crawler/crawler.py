@@ -26,12 +26,24 @@ class CrawlOptions:
         self.js_rendering = js_rendering
         self.user_agent = user_agent
 
+from app.crawler.validator import validate_and_normalize_url
+
+def _enforce_no_ssrf_redirect(resp, *args, **kwargs):
+    if resp.is_redirect:
+        location = resp.headers.get("location")
+        if location:
+            full_loc = urljoin(resp.url, location)
+            is_valid, err_msg, _ = validate_and_normalize_url(full_loc)
+            if not is_valid:
+                raise requests.exceptions.RequestException(f"SSRF violation: Redirect to {full_loc} blocked: {err_msg}")
+
 class WebCrawler:
     def __init__(self, base_url: str, domain: str, options: Optional[CrawlOptions] = None):
         self.base_url = base_url
         self.domain = domain
         self.options = options or CrawlOptions()
         self.session = requests.Session()
+        self.session.hooks["response"].append(_enforce_no_ssrf_redirect)
         self.session.headers.update({
             "User-Agent": self.options.user_agent,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
